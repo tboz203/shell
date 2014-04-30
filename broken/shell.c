@@ -1,121 +1,156 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <unistd.h>
 
-typedef struct {/*{{{*/
+typedef struct {
     char* start;
     enum { WORD, SINGLE, DOUBLE, SEMICOLON, EOL, ERROR } type;
-} token;/*}}}*/
+} token;
 
 void start(char*);
 token next();
 
-static char tokenLine[1024];
-static char* tokenPosition;
+char line[1024];
+char *position;
+int localerr;
 
-void start(char *line) {/*{{{*/
-    /* printf("starting tokenizing\n"); */
-    if (line == NULL) {
-        fprintf(stderr, "[-] No string passed to tokenizer.\n");
-        exit(1);
-    }
-
-    strcpy(tokenLine, line);
-    tokenPosition = tokenLine;
-}/*}}}*/
-
-token next() {/*{{{*/
-    /* printf("getting next token\n"); */
+token next() {
+    fprintf(stderr, "getting next token\n");
     token output;
-    if (tokenPosition == NULL || *tokenPosition == '\0') {
+    if (position == NULL || *position == '\0') {
         output.start = NULL;
         output.type = EOL;
         return output;
     }
 
-    while (*tokenPosition == ' ' || *tokenPosition == '\t' || *tokenPosition == '\n') {
-        tokenPosition++;
+    while (*position == ' ' || *position == '\t' || *position == '\n') {
+        position++;
     }
 
-    switch (*tokenPosition) {
+    switch (*position) {
         case '\0':
         case ';':
             output.start = NULL;
             output.type = EOL;
             return output;
         case '\'':
-            tokenPosition++;
-            output.start = tokenPosition;
+            position++;
+            output.start = position;
             output.type = SINGLE;
 
-            while (*tokenPosition != '\'' && *tokenPosition != '\0') {
-                tokenPosition++;
+            while (*position != '\'' && *position != '\0') {
+                position++;
             }
             break;
 
         case '\"':
-            tokenPosition++;
-            output.start = tokenPosition;
+            position++;
+            output.start = position;
             output.type = DOUBLE;
 
-            while (*tokenPosition != '\"' && *tokenPosition != '\0') {
-                tokenPosition++;
+            while (*position != '\"' && *position != '\0') {
+                position++;
             }
             break;
 
         default:
-            output.start = tokenPosition;
+            output.start = position;
             output.type = WORD;
 
-            while (*tokenPosition != ' ' && *tokenPosition != '\t' &&
-                   *tokenPosition != '\n' && *tokenPosition != '\0') {
-                tokenPosition++;
+            while (*position != ' ' && *position != '\t' &&
+                   *position != '\n' && *position != '\0') {
+                position++;
             }
     }
 
-    if (*tokenPosition != '\0') {
-        *tokenPosition = '\0';
-        tokenPosition++;
+    if (*position != '\0') {
+        *position = '\0';
+        position++;
     } else if (output.type == SINGLE || output.type == DOUBLE) {
         output.type = ERROR;
     }
 
     return output;
-}/*}}}*/
+}
 
-int main() {/*{{{*/
+void process(int index, token current, char *statement[]) {
+    statement[index] = current.start;
+}
 
-    char line[1024];
+int doEXIT (char *statement[]) {
+    int value = 0;
+    if
+
+int doCD (char *statment[]) {
+    char* dirname;
+    if (statement[1] == NULL) {
+        dirname = getenv("HOME");
+    } else {
+        dirname = statement[1];
+    }
+
+    if (chdir(dirname) == -1) {
+        localerr = errno;
+        printf("[-] Error: %s\n", strerror(localerr));
+    }
+    return 1;
+}
+
+void execute(char *statement[]) {
+
+    if (strcmp(statement[0], "exit") == 0) {
+        if (doEXIT(statement)) { return; }
+    } else if (strcmp(statement[0], "cd") == 0) {
+        if (doCD(statement)) { return; }
+    }
+
+    if (fork() == 0) {
+        // we're the child
+        execvp(statement[0], statement);
+        localerr = errno;
+        printf("[-] Error: ");
+        printf("%s\n", strerror(localerr));
+    } else {
+        wait(NULL);
+    }
+}
+
+int main() {
+
     token current;
     char *tmp;
+    char *statement[256];
+    int index;
 
     for (;;) {
         tmp = fgets(line, 1024, stdin);
+        index = 0;
 
         if (tmp == NULL) {
-            /* printf("got EOF\n"); */
+            fprintf(stderr, "got EOF\n");
             break;
         }
 
-        /* printf("fgets loop\n"); */
-        start(line);
+        fprintf(stderr, "fgets loop\n");
+        position = line;
         for (;;) {
-            /* printf("token loop\n"); */
-            current = next();
-            printf("\t%s\n", current.start);
+            fprintf(stderr, "token loop\n");
+            current = next(tmp);
+            fprintf(stderr, "\t%s\n", current.start);
             if (current.type == EOL) {
-                /* printf("type == eol\n"); */
+                fprintf(stderr, "type == eol\n");
                 break;
             }
 
-            if (strcmp(current.start, "exit") == 0) {
-                /* printf("got \'exit\'\n"); */
-                exit(0);
-            }
+            process(index, current, statement);
+            index++;
         }
+
+        statement[index] = NULL;
+        execute(statement);
     }
 
     return 0;
-}/*}}}*/
-
-/* vim: set fdm=marker : */
+}
