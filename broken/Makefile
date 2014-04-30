@@ -1,10 +1,7 @@
-all: shell subprocess
+all: shell
 
 shell: shell.c
 	gcc -ggdb shell.c -o shell
 
-subprocess: subprocess.c
-	gcc -ggdb subprocess.c -o subprocess
-
 clean:
-	-rm shell subprocess
+	-rm shell

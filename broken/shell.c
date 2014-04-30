@@ -17,7 +17,6 @@ char *position;
 int localerr;
 
 token next() {
-    fprintf(stderr, "getting next token\n");
     token output;
     if (position == NULL || *position == '\0') {
         output.start = NULL;
@@ -80,10 +79,22 @@ void process(int index, token current, char *statement[]) {
 }
 
 int doEXIT (char *statement[]) {
-    int value = 0;
-    if
+    long value = 0;
+    char *end;
 
-int doCD (char *statment[]) {
+    if (statement[1] != NULL) {
+        value = strtol(statement[1], &end, 0);
+        if (*end != '\0') {
+            printf("[-] Error: '%s' is not a number\n", statement[1]);
+            return 1;
+        }
+    }
+
+    exit(value);
+    return 0;
+}
+
+int doCD (char *statement[]) {
     char* dirname;
     if (statement[1] == NULL) {
         dirname = getenv("HOME");
@@ -100,6 +111,10 @@ int doCD (char *statment[]) {
 
 void execute(char *statement[]) {
 
+    if (statement[0] == NULL) {
+        return;
+    }
+
     if (strcmp(statement[0], "exit") == 0) {
         if (doEXIT(statement)) { return; }
     } else if (strcmp(statement[0], "cd") == 0) {
@@ -110,8 +125,7 @@ void execute(char *statement[]) {
         // we're the child
         execvp(statement[0], statement);
         localerr = errno;
-        printf("[-] Error: ");
-        printf("%s\n", strerror(localerr));
+        printf("[-] Error: %s\n", strerror(localerr));
     } else {
         wait(NULL);
     }
@@ -123,24 +137,25 @@ int main() {
     char *tmp;
     char *statement[256];
     int index;
+    char cwd[1024];
 
     for (;;) {
+
+        getwd(cwd);
+        printf("%s$ ", cwd);
+        fflush(stdout);
+
         tmp = fgets(line, 1024, stdin);
         index = 0;
 
         if (tmp == NULL) {
-            fprintf(stderr, "got EOF\n");
             break;
         }
 
-        fprintf(stderr, "fgets loop\n");
         position = line;
         for (;;) {
-            fprintf(stderr, "token loop\n");
             current = next(tmp);
-            fprintf(stderr, "\t%s\n", current.start);
             if (current.type == EOL) {
-                fprintf(stderr, "type == eol\n");
                 break;
             }
 
@@ -150,6 +165,15 @@ int main() {
 
         statement[index] = NULL;
         execute(statement);
+
+        // cleanup
+        for (index = 0; index < 256; index++) {
+            statement[index] = NULL;
+        }
+
+        for (index = 0; index < 1024; index++) {
+            line[index] = '\0';
+        }
     }
 
     return 0;

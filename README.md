@@ -1,3 +1,6 @@
-# It's a shell!
+# Oh no!
 
-just doing shell things
+If you found yourself looking around at my code, please, for the love of all that is holy, don't look at this project
+
+</shame>
+
